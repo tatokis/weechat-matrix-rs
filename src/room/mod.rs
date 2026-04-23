@@ -629,9 +629,10 @@ impl MatrixRoom {
             )
             .await
             .map(|r| {
-                // TODO: the tags are different if the room is a DM.
                 if sender.user_id() == &*self.own_user_id {
                     r.add_self_tags()
+                } else if self.is_direct() {
+                    r.add_private_msg_tags()
                 } else {
                     r.add_msg_tags()
                 }
@@ -887,9 +888,10 @@ impl MatrixRoom {
                 )
                 .await
                 .map(|r| {
-                    // TODO: the tags are different if the room is a DM.
                     if sender.user_id() == &*self.own_user_id {
                         r.add_self_tags()
+                    } else if self.is_direct() {
+                        r.add_private_msg_tags()
                     } else {
                         r.add_msg_tags()
                     }
