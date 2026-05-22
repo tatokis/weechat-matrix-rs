@@ -203,13 +203,6 @@ impl Members {
 
     /// Retrieve a reference to a Weechat room member by user ID.
     pub async fn get(&self, user_id: &UserId) -> Option<WeechatRoomMember> {
-        let color = if self.room.own_user_id() == user_id {
-            "weechat.color.chat_nick_self".into()
-        } else {
-            Weechat::info_get("nick_color_name", user_id.as_str())
-                .expect("Couldn't get the nick color name")
-        };
-
         let room = self.room.clone();
         let user = user_id.to_owned();
 
@@ -219,15 +212,29 @@ impl Members {
             .await
             .expect("Fetching the room member from the store panicked")
         {
-            Ok(m) => m.map(|m| WeechatRoomMember {
-                color: Rc::new(color),
-                ambiguous_nick: Rc::new(
-                    self.ambiguity_map
-                        .get(m.user_id())
-                        .map(|a| *a)
-                        .unwrap_or(false),
-                ),
-                inner: m,
+            Ok(m) => m.map(|m| {
+                let ambiguous = self
+                    .ambiguity_map
+                    .get(m.user_id())
+                    .map(|a| *a)
+                    .unwrap_or(false);
+                let color = if self.room.own_user_id() == user_id {
+                    "weechat.color.chat_nick_self".into()
+                } else {
+                    let nick = if ambiguous {
+                        user_id.as_str()
+                    } else {
+                        m.name()
+                    };
+                    Weechat::info_get("nick_color_name", nick)
+                        .expect("Couldn't get the nick color name")
+                };
+
+                WeechatRoomMember {
+                    color: Rc::new(color),
+                    ambiguous_nick: Rc::new(ambiguous),
+                    inner: m,
+                }
             }),
             Err(e) => {
                 Weechat::print(&format!(
