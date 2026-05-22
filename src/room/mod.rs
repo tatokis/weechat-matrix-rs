@@ -64,7 +64,7 @@ use matrix_sdk::{
             },
             AnyMessageLikeEventContent, AnySyncMessageLikeEvent,
             AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent,
-            OriginalSyncMessageLikeEvent, SyncMessageLikeEvent, SyncStateEvent,
+            SyncMessageLikeEvent, SyncStateEvent,
         },
         EventId, MilliSecondsSinceUnixEpoch, OwnedRoomAliasId,
         OwnedTransactionId, OwnedUserId, RoomId, TransactionId, UserId,
@@ -841,21 +841,18 @@ impl MatrixRoom {
         if let Some((echo, content)) =
             self.outgoing_messages.remove(transaction_id)
         {
-            let event = OriginalSyncMessageLikeEvent {
-                sender: (*self.own_user_id).to_owned(),
-                origin_server_ts: MilliSecondsSinceUnixEpoch::now(),
-                event_id: event_id.to_owned(),
-                content,
-                unsigned: Default::default(),
-            };
-
-            let event = AnySyncMessageLikeEvent::RoomMessage(
-                SyncMessageLikeEvent::Original(event),
+            let sender = self.members.get(&self.own_user_id).await.expect(
+                "Rendering a message but the sender isn't in the nicklist",
             );
-
             let rendered = self
-                .render_sync_message(&event)
+                .render_message_content(
+                    event_id,
+                    MilliSecondsSinceUnixEpoch::now(),
+                    &sender,
+                    &content.into(),
+                )
                 .await
+                .map(|r| r.add_self_tags())
                 .expect("Sent out an event that we don't know how to render");
 
             if echo {
