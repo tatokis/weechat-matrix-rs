@@ -66,7 +66,7 @@ use matrix_sdk::{
             AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent,
             SyncMessageLikeEvent, SyncStateEvent,
         },
-        EventId, MilliSecondsSinceUnixEpoch, OwnedRoomAliasId,
+        EventId, MilliSecondsSinceUnixEpoch, OwnedRoomAliasId, OwnedRoomId,
         OwnedTransactionId, OwnedUserId, RoomId, TransactionId, UserId,
     },
     StoreError,
@@ -150,8 +150,8 @@ impl IntMutex {
 #[derive(Clone)]
 pub struct MatrixRoom {
     homeserver: Rc<Url>,
-    room_id: Rc<RoomId>,
-    own_user_id: Rc<UserId>,
+    room_id: OwnedRoomId,
+    own_user_id: OwnedUserId,
     room: Room,
     buffer: RoomBuffer,
 
@@ -224,7 +224,7 @@ impl RoomHandle {
             .unwrap_or_else(|| own_user_id.localpart().to_owned());
 
         let verification = Verification::new(
-            own_user_id.into(),
+            own_user_id.to_owned(),
             connection.clone(),
             members.clone(),
             buffer.clone(),
@@ -232,13 +232,13 @@ impl RoomHandle {
 
         let room = MatrixRoom {
             homeserver: Rc::new(homeserver),
-            room_id: room_id.into(),
+            room_id: room_id.to_owned(),
             connection: connection.clone(),
             config,
             prev_batch: Rc::new(RefCell::new(
                 room.last_prev_batch().map(PrevBatch::Backwards),
             )),
-            own_user_id: own_user_id.into(),
+            own_user_id: own_user_id.to_owned(),
             members,
             buffer,
             verification,

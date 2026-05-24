@@ -29,7 +29,7 @@ use matrix_sdk::{
             message::send_message_event::v3::Response as RoomSendResponse,
             session::login::v3::Response as LoginResponse,
             sync::sync_events::v3::Filter,
-            uiaa::{AuthData, Password, UserIdentifier},
+            uiaa::{AuthData, MatrixUserIdentifier, Password, UserIdentifier},
         },
         events::{
             room::member::RoomMemberEventContent, AnyMessageLikeEventContent,
@@ -60,7 +60,9 @@ pub struct InteractiveAuthInfo {
 impl InteractiveAuthInfo {
     pub fn as_auth_data(&self) -> AuthData {
         AuthData::Password(Password::new(
-            UserIdentifier::UserIdOrLocalpart(self.user.clone()),
+            UserIdentifier::Matrix(MatrixUserIdentifier::new(
+                self.user.clone(),
+            )),
             self.password.clone(),
         ))
     }
@@ -158,15 +160,17 @@ impl Connection {
         content: AnyMessageLikeEventContent,
         transaction_id: Option<OwnedTransactionId>,
     ) -> MatrixResult<RoomSendResponse> {
-        self.spawn(async move {
-            let mut msg = room.send(content);
-            if let Some(txn_id) = transaction_id.as_deref() {
-                msg = msg.with_transaction_id(txn_id.to_owned());
-            }
+        Ok(self
+            .spawn(async move {
+                let mut msg = room.send(content);
+                if let Some(txn_id) = transaction_id.as_deref() {
+                    msg = msg.with_transaction_id(txn_id.to_owned());
+                }
 
-            msg.await
-        })
-        .await
+                msg.await
+            })
+            .await?
+            .response)
     }
 
     pub async fn delete_devices(

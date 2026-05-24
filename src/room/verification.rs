@@ -7,7 +7,7 @@ use matrix_sdk::{
             key::verification::VerificationMethod, room::message::MessageType,
             AnySyncMessageLikeEvent,
         },
-        UserId,
+        OwnedUserId,
     },
 };
 
@@ -20,7 +20,7 @@ use super::{buffer::RoomBuffer, members::Members};
 
 #[derive(Clone)]
 pub struct Verification {
-    own_user_id: Rc<UserId>,
+    own_user_id: OwnedUserId,
     connection: Rc<RefCell<Option<Connection>>>,
     members: Members,
     buffer: RoomBuffer,
@@ -47,7 +47,7 @@ impl From<SasVerification> for ActiveVerification {
 
 impl Verification {
     pub fn new(
-        own_user_id: Rc<UserId>,
+        own_user_id: OwnedUserId,
         connection: Rc<RefCell<Option<Connection>>>,
         members: Members,
         buffer: RoomBuffer,
