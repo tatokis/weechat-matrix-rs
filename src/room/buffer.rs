@@ -256,18 +256,39 @@ impl RoomBuffer {
     }
 
     pub fn print_rendered_event(&self, rendered: RenderedEvent) {
+        let lines = &rendered.content.lines;
+        if lines.is_empty() {
+            return;
+        }
+
         let buffer = self.buffer_handle();
 
         if let Ok(buffer) = buffer.upgrade() {
-            for line in rendered.content.lines {
-                let message = format!("{}{}", &rendered.prefix, &line.message);
+            // If all messages have the same tags, collapse them into the same message with newlines
+            if lines.iter().all(|l| l.tags == lines[0].tags) {
+                let messages: Vec<&str> =
+                    lines.iter().map(|l| l.message.as_str()).collect();
+                let message =
+                    format!("{}{}", &rendered.prefix, messages.join("\n"));
                 let tags: Vec<&str> =
-                    line.tags.iter().map(|t| t.as_str()).collect();
+                    lines[0].tags.iter().map(|t| t.as_str()).collect();
                 buffer.print_date_tags(
                     rendered.message_timestamp,
                     &tags,
                     &message,
                 )
+            } else {
+                for line in lines {
+                    let message =
+                        format!("{}{}", &rendered.prefix, &line.message);
+                    let tags: Vec<&str> =
+                        line.tags.iter().map(|t| t.as_str()).collect();
+                    buffer.print_date_tags(
+                        rendered.message_timestamp,
+                        &tags,
+                        &message,
+                    )
+                }
             }
         }
     }
