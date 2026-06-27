@@ -29,7 +29,7 @@ pub struct Commands {
     _page_up: CommandRun,
     _verification: Command,
     _buffer_clear: CommandRun,
-    _me: CommandRun,
+    _me: Command,
 }
 
 impl Commands {
