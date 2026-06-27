@@ -57,6 +57,7 @@ pub struct RenderedEvent {
 
 impl RenderedEvent {
     const MSG_TAGS: &'static [&'static str] = &["notify_message"];
+    const PRIVATE_MSG_TAGS: &'static [&'static str] = &["notify_private"];
     const SELF_TAGS: &'static [&'static str] =
         &["notify_none", "no_highlight", "self_msg"];
 
@@ -66,6 +67,10 @@ impl RenderedEvent {
 
     pub fn add_msg_tags(self) -> Self {
         self.add_tags(Self::MSG_TAGS)
+    }
+
+    pub fn add_private_msg_tags(self) -> Self {
+        self.add_tags(Self::PRIVATE_MSG_TAGS)
     }
 
     fn add_tags(mut self, tags: &[&str]) -> Self {
