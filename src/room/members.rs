@@ -21,6 +21,7 @@ use matrix_sdk::{
 
 use weechat::{
     buffer::{Buffer, NickSettings},
+    config::ConfigOption,
     Prefix, Weechat,
 };
 
@@ -219,7 +220,18 @@ impl Members {
                     .map(|a| *a)
                     .unwrap_or(false);
                 let color = if self.room.own_user_id() == user_id {
-                    "weechat.color.chat_nick_self".into()
+                    unsafe {
+                        if let ConfigOption::Color(col) = Weechat::config_get(
+                            Weechat::weechat(),
+                            "weechat.color.chat_nick_self",
+                        )
+                        .unwrap()
+                        {
+                            col.value().into()
+                        } else {
+                            panic!("Failed to get weechat.color.chat_nick_self")
+                        }
+                    }
                 } else {
                     let nick = if ambiguous {
                         user_id.as_str()
