@@ -1,10 +1,8 @@
-use std::borrow::Cow;
-
 use matrix_sdk::ruma::events::room::message::RoomMessageEventContent;
 use weechat::{
     buffer::Buffer,
-    hooks::{CommandRun, CommandRunCallback},
-    ReturnCode, Weechat,
+    hooks::{Command, CommandCallback, CommandSettings},
+    Weechat, Args
 };
 
 use crate::Servers;
@@ -14,9 +12,17 @@ pub struct MeCommand {
 }
 
 impl MeCommand {
-    pub fn create(servers: &Servers) -> Result<CommandRun, ()> {
-        CommandRun::new(
-            "/me",
+    pub const DESCRIPTION: &'static str = "Send a /me action to the current channel";
+
+    pub fn create(servers: &Servers) -> Result<Command, ()> {
+        let settings = CommandSettings::new("me")
+            .description(Self::DESCRIPTION)
+            .add_argument("<message>")
+            .arguments_description(
+                "message: Message to send"
+            );
+        Command::new(
+            settings,
             MeCommand {
                 servers: servers.clone(),
             },
@@ -24,21 +30,16 @@ impl MeCommand {
     }
 }
 
-impl CommandRunCallback for MeCommand {
-    fn callback(
-        &mut self,
-        _: &Weechat,
-        buffer: &Buffer,
-        cmd: Cow<str>,
-    ) -> ReturnCode {
+impl CommandCallback for MeCommand {
+    fn callback(&mut self, _: &Weechat, buffer: &Buffer, arguments: Args) {
         if let Some(room) = self.servers.find_room(buffer) {
+            let msg = arguments.skip(1).map(|arg| arg.to_string()).collect::<Vec<String>>();
+
             self.servers.runtime().block_on(room.send_message(
                 RoomMessageEventContent::emote_plain(
-                    cmd.strip_prefix("/me ").map(|s| s.to_string()).unwrap(),
+                    msg.join(" ")
                 ),
             ));
         }
-
-        ReturnCode::Ok
     }
 }
