@@ -118,11 +118,16 @@ pub trait Render {
         let event_tag = event_id.to_tag();
         let sender_tag = sender.to_tag();
         let nick_tag = format!("nick_{}", nick);
-        let color = format!("prefix_nick_{}", color_name);
         tags.push(event_tag);
         tags.push(sender_tag);
         tags.push(nick_tag);
-        tags.push(color);
+
+        // Only add the colour tag if this isn't an emote event
+        // This makes /me show the * properly (and not as <*>)
+        if !tags.contains(&"matrix_emote".into()) {
+            let color = format!("prefix_nick_{}", color_name);
+            tags.push(color);
+        }
 
         tags
     }
