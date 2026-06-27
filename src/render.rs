@@ -33,7 +33,8 @@ use matrix_sdk::{
                     ServerNoticeMessageEventContent, TextMessageEventContent,
                     VideoMessageEventContent,
                 },
-                EncryptedFile, MediaSource,
+                EncryptedFile, EncryptedFileHash, EncryptedFileHashAlgorithm,
+                EncryptedFileInfo, MediaSource,
             },
             OriginalSyncStateEvent, RedactedSyncMessageLikeEvent,
         },
@@ -398,19 +399,22 @@ fn mxc_to_emxc(
 
     emxc_url = emxc_url.join(&mxc_to_http_download_path(url)?)?;
 
+    let Some(EncryptedFileHash::Sha256(hash)) =
+        &encrypted.hashes.get(&EncryptedFileHashAlgorithm::Sha256)
+    else {
+        return Err("Missing sha256 hash".into());
+    };
+
+    let EncryptedFileInfo::V2(ref enc_info) = encrypted.info else {
+        return Err("Invalid encrypted file version".into());
+    };
+
     // Add query parameters
     emxc_url
         .query_pairs_mut()
-        .append_pair("key", &encrypted.key.k.encode())
-        .append_pair(
-            "hash",
-            &encrypted
-                .hashes
-                .get("sha256")
-                .ok_or("Missing sha256 hash")?
-                .encode(),
-        )
-        .append_pair("iv", &encrypted.iv.encode());
+        .append_pair("key", &enc_info.k.encode())
+        .append_pair("hash", &hash.encode().clone())
+        .append_pair("iv", &enc_info.iv.encode());
 
     Ok(emxc_url.to_string())
 }

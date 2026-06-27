@@ -64,9 +64,9 @@ use matrix_sdk::{
             },
             AnyMessageLikeEventContent, AnySyncMessageLikeEvent,
             AnySyncStateEvent, AnySyncTimelineEvent, AnyTimelineEvent,
-            OriginalSyncMessageLikeEvent, SyncMessageLikeEvent, SyncStateEvent,
+            SyncMessageLikeEvent, SyncStateEvent,
         },
-        EventId, MilliSecondsSinceUnixEpoch, OwnedRoomAliasId,
+        EventId, MilliSecondsSinceUnixEpoch, OwnedRoomAliasId, OwnedRoomId,
         OwnedTransactionId, OwnedUserId, RoomId, TransactionId, UserId,
     },
     StoreError,
@@ -150,8 +150,8 @@ impl IntMutex {
 #[derive(Clone)]
 pub struct MatrixRoom {
     homeserver: Rc<Url>,
-    room_id: Rc<RoomId>,
-    own_user_id: Rc<UserId>,
+    room_id: OwnedRoomId,
+    own_user_id: OwnedUserId,
     room: Room,
     buffer: RoomBuffer,
 
@@ -224,7 +224,7 @@ impl RoomHandle {
             .unwrap_or_else(|| own_user_id.localpart().to_owned());
 
         let verification = Verification::new(
-            own_user_id.into(),
+            own_user_id.to_owned(),
             connection.clone(),
             members.clone(),
             buffer.clone(),
@@ -232,13 +232,13 @@ impl RoomHandle {
 
         let room = MatrixRoom {
             homeserver: Rc::new(homeserver),
-            room_id: room_id.into(),
+            room_id: room_id.to_owned(),
             connection: connection.clone(),
             config,
             prev_batch: Rc::new(RefCell::new(
                 room.last_prev_batch().map(PrevBatch::Backwards),
             )),
-            own_user_id: own_user_id.into(),
+            own_user_id: own_user_id.to_owned(),
             members,
             buffer,
             verification,
@@ -841,21 +841,18 @@ impl MatrixRoom {
         if let Some((echo, content)) =
             self.outgoing_messages.remove(transaction_id)
         {
-            let event = OriginalSyncMessageLikeEvent {
-                sender: (*self.own_user_id).to_owned(),
-                origin_server_ts: MilliSecondsSinceUnixEpoch::now(),
-                event_id: event_id.to_owned(),
-                content,
-                unsigned: Default::default(),
-            };
-
-            let event = AnySyncMessageLikeEvent::RoomMessage(
-                SyncMessageLikeEvent::Original(event),
+            let sender = self.members.get(&self.own_user_id).await.expect(
+                "Rendering a message but the sender isn't in the nicklist",
             );
-
             let rendered = self
-                .render_sync_message(&event)
+                .render_message_content(
+                    event_id,
+                    MilliSecondsSinceUnixEpoch::now(),
+                    &sender,
+                    &content.into(),
+                )
                 .await
+                .map(|r| r.add_self_tags())
                 .expect("Sent out an event that we don't know how to render");
 
             if echo {
